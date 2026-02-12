@@ -1,13 +1,14 @@
 package com.accounts.controller;
 
-import com.accounts.domain.BankAccount;
 import com.accounts.domain.Client;
+import com.accounts.entity.BankAccount;
 import com.accounts.service.BankService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.BatchMapping;
+import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
-import org.springframework.graphql.data.method.annotation.SchemaMapping;
 import org.springframework.stereotype.Controller;
 
 import java.util.List;
@@ -16,6 +17,7 @@ import java.util.Map;
 @Controller
 @Slf4j
 public class AccountsController {
+
     @Autowired
     BankService bankService;
 
@@ -25,20 +27,34 @@ public class AccountsController {
         return bankService.getAccounts();
     }
 
-    /** Get clients with N + 1 problem
-     @SchemaMapping (typeName = "BankAccount", field = "client")
-     Client getClient (BankAccount account) {
-     log.info("Getting client for " + account.getId());
-     return bankService.getClientByAccountId(account.getId());
-     }*/
+    @QueryMapping
+    BankAccount accountById (@Argument("accountId")  Long accountId){
+        log.info("Getting Account ");
+        return bankService.accountById(accountId);
+    }
 
+    @BatchMapping( field = "client", typeName = "BankAccountType" )
+    public Map<BankAccount, Client> clients(List<BankAccount> bankAccounts) {
+        log.info("Getting client for Accounts : " + bankAccounts.size());
+        return bankService.getBankAccountClientMap(bankAccounts);
+    }
 
-    /** Get clients without N + 1 problem **/
-    @BatchMapping( field = "client")
-    Map<BankAccount, Client> getClient (List<BankAccount> accounts){
-        log.info("Getting client for Accounts : " + accounts.size());
+    @MutationMapping
+    Boolean addAccount (@Argument("account") BankAccount account)  {
+        log.info("Saving Account : " + account);
+        bankService.save(account);
+        return true;
+    }
 
-        Map<BankAccount, Client> clentsMap = bankService.getClients (accounts);
-        return clentsMap;
+    @MutationMapping
+    BankAccount editAccount (@Argument("account") BankAccount account) {
+        log.info("Editing Account : " + account);
+        return bankService.modify(account);
+    }
+
+    @MutationMapping
+    Boolean deleteAccount (@Argument("id") Long accountId) {
+        log.info("Deleting Account : " + accountId);
+        return bankService.delete(accountId);
     }
 }
